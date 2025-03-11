@@ -1,0 +1,48 @@
+import asyncio
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+from aiogram import Bot, Dispatcher, types
+
+# ДАННЫЕ БОТА
+TOKEN = "8069068732:AAFmafJgPDWfEpqFaOgJUdGUzXmdzn2ErJo"
+CHAT_ID = "YOUR_CHAT_ID"  # Замени на ID пользователя @anzhela_tm
+URL = "https://kolejka.gdansk.uw.gov.pl/branch/5"
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher()
+
+# Настройки Selenium
+options = webdriver.ChromeOptions()
+options.add_argument("--headless")  # Запуск без окна браузера
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
+
+async def check_dates():
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
+
+    while True:
+        driver.get(URL)
+        await asyncio.sleep(5)  # Ждем загрузки
+
+        try:
+            # Ищем зеленые кнопки (свободные даты)
+            dates = driver.find_elements(By.CLASS_NAME, "btn-success")
+            available_dates = [date.text for date in dates if date.text.strip()]
+
+            if available_dates:
+                await bot.send_message(CHAT_ID, f"✅ Свободные даты: {', '.join(available_dates)}")
+
+        except Exception as e:
+            print(f"Ошибка: {e}")
+
+        await asyncio.sleep(300)  # Проверяем каждые 5 минут
+
+async def main():
+    asyncio.create_task(check_dates())  # Запускаем фоновую проверку
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
